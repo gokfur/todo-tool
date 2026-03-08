@@ -3,61 +3,198 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Premium To-Do App</title>
+  <title>Taskly</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body{font-family:'Inter',sans-serif;}
-    button:focus, input:focus, select:focus { outline: 2px solid #4f46e5; outline-offset: 2px; }
+    button:focus, input:focus, select:focus, textarea:focus { outline: 2px solid #4f46e5; outline-offset: 2px; }
     ::selection { background: #4f46e5; color: white; }
+    .filter-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+    .min-tap-target { min-height: 44px; min-width: 44px; }
   </style>
 </head>
-<body class="bg-white antialiased" style="font-family: Inter, sans-serif;">
-  <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 flex flex-wrap items-center justify-between">
-    <div class="text-xl font-bold">My To‑Do</div>
-    <div class="flex items-center space-x-4">
-      <div id="user-info" class="hidden items-center space-x-2">
-        <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="">
-        <span id="user-name" class="font-medium"></span>
-        <button id="sign-out" class="bg-white text-indigo-600 px-3 py-1 rounded-full text-sm">Sign out</button>
+<body class="bg-gray-50 antialiased" style="font-family: Inter, sans-serif;">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 sticky top-0 z-50">
+    <div class="max-w-3xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <h1 class="text-xl font-bold">Taskly</h1>
+      <div class="text-sm font-semibold bg-white bg-opacity-20 px-3 py-1 rounded-full" id="task-count">0 tasks</div>
+      <div class="flex items-center space-x-3">
+        <div id="user-info" class="hidden flex items-center space-x-2">
+          <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="">
+          <span id="user-name" class="font-medium text-sm hidden sm:inline"></span>
+          <button id="sign-out" class="min-tap-target bg-white text-indigo-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-gray-100 transition">Sign out</button>
+        </div>
+        <button id="sign-in" class="min-tap-target bg-white text-indigo-600 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-100 transition">Sign in</button>
       </div>
-      <button id="sign-in" class="bg-white text-indigo-600 px-4 py-2 rounded-full text-sm">Sign in with Google</button>
     </div>
   </header>
-  <div id="progress-container" class="w-full h-2 bg-gray-200">
-    <div id="progress-bar" class="h-2 bg-indigo-600 w-0"></div>
+
+  <!-- Motivational Message & Progress -->
+  <div id="motivation-container" class="bg-white border-b border-gray-200 p-4 text-center hidden">
+    <p id="motivation-text" class="text-sm font-semibold text-indigo-600"></p>
   </div>
-  <main class="max-w-3xl mx-auto p-4">
-    <form id="task-form" class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4" role="form" aria-label="Add new task">
-      <label for="text" class="sr-only">Task description</label>
-      <input type="text" id="text" placeholder="Task description" required aria-required="true" class="col-span-1 md:col-span-2 p-4 border rounded text-gray-900 placeholder-gray-600" />
-      <div class="relative">
-        <label for="category" class="sr-only">Category</label>
-        <select id="category" class="p-4 border rounded w-full text-gray-900" aria-label="Task category">
-          <option value="Work">Work</option>
-          <option value="Personal">Personal</option>
-          <option value="Shopping">Shopping</option>
-          <option value="Health">Health</option>
-          <option value="__custom__">+ Custom</option>
-        </select>
+  <div id="progress-container" class="w-full h-2 bg-gray-300">
+    <div id="progress-bar" class="h-2 bg-indigo-600 w-0 transition-all duration-500"></div>
+  </div>
+
+  <main class="max-w-3xl mx-auto p-4 space-y-4">
+    <!-- Search Bar -->
+    <div class="sticky top-16 z-40 bg-gray-50 pb-4">
+      <input 
+        type="text" 
+        id="search-input" 
+        placeholder="🔍 Search tasks..." 
+        class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+        aria-label="Search tasks"
+      />
+    </div>
+
+    <!-- Filter Pills -->
+    <div class="filter-scroll flex gap-2 pb-2" id="filter-container">
+      <button class="filter-pill min-tap-target px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border-2 transition" data-filter="all">
+        All <span class="ml-1 bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5 text-xs" id="count-all">0</span>
+      </button>
+      <button class="filter-pill min-tap-target px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border-2 transition" data-filter="today">
+        ☀️ Today <span class="ml-1 bg-gray-200 text-gray-700 rounded-full px-2 py-0.5 text-xs" id="count-today">0</span>
+      </button>
+      <button class="filter-pill min-tap-target px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border-2 transition" data-filter="starred">
+        ⭐ Starred <span class="ml-1 bg-gray-200 text-gray-700 rounded-full px-2 py-0.5 text-xs" id="count-starred">0</span>
+      </button>
+      <button class="filter-pill min-tap-target px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border-2 transition" data-filter="completed">
+        ✅ Done <span class="ml-1 bg-gray-200 text-gray-700 rounded-full px-2 py-0.5 text-xs" id="count-completed">0</span>
+      </button>
+      <button class="filter-pill min-tap-target px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap border-2 transition" data-filter="overdue">
+        🔴 Overdue <span class="ml-1 bg-red-100 text-red-700 rounded-full px-2 py-0.5 text-xs" id="count-overdue">0</span>
+      </button>
+    </div>
+
+    <!-- Add Task Form -->
+    <form id="task-form" class="bg-white rounded-xl shadow-md p-4 md:p-6 space-y-4" role="form" aria-label="Add new task">
+      <h2 class="text-lg font-semibold text-gray-900">Add New Task</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Task Title -->
+        <div>
+          <label for="text" class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+          <input 
+            type="text" 
+            id="text" 
+            placeholder="What do you need to do?" 
+            required 
+            aria-required="true" 
+            class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+          />
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <select id="category" class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" aria-label="Task category">
+            <option value="Work">💼 Work</option>
+            <option value="Personal">🏠 Personal</option>
+            <option value="Shopping">🛒 Shopping</option>
+            <option value="Health">❤️ Health</option>
+            <option value="Study">📚 Study</option>
+            <option value="Finance">💰 Finance</option>
+            <option value="Travel">✈️ Travel</option>
+            <option value="Fitness">🏋️ Fitness</option>
+            <option value="Family">👨‍👩‍👧 Family</option>
+            <option value="Goals">🎯 Goals</option>
+            <option value="__custom__">➕ Custom</option>
+          </select>
+        </div>
       </div>
-      <input type="text" id="custom-category" placeholder="Custom category" class="hidden p-4 border rounded text-gray-900 placeholder-gray-600" aria-label="Custom category name" />
-      <label for="due" class="sr-only">Due date</label>
-      <input type="date" id="due" class="p-4 border rounded text-gray-900" aria-label="Due date" />
-      <label for="priority" class="sr-only">Priority</label>
-      <select id="priority" class="p-4 border rounded text-gray-900" aria-label="Priority level">
-        <option value="high">🔴 High</option>
-        <option value="medium">🟡 Medium</option>
-        <option value="low">🟢 Low</option>
-      </select>
-      <button type="submit" class="col-span-1 md:col-span-4 bg-indigo-600 text-white py-4 rounded-lg hover:bg-indigo-700 focus:bg-indigo-700 transition font-semibold" aria-label="Add new task">Add</button>
+
+      <!-- Custom Category (hidden by default) -->
+      <input 
+        type="text" 
+        id="custom-category" 
+        placeholder="Enter custom category name" 
+        class="hidden w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+        aria-label="Custom category name"
+      />
+
+      <!-- Notes -->
+      <div>
+        <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+        <textarea 
+          id="notes" 
+          placeholder="Add details or notes..." 
+          rows="3"
+          class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition resize-none"
+          aria-label="Task notes"
+        ></textarea>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Due Date -->
+        <div>
+          <label for="due" class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+          <input 
+            type="date" 
+            id="due" 
+            class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition"
+            aria-label="Due date"
+          />
+        </div>
+
+        <!-- Priority -->
+        <div>
+          <label for="priority" class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" aria-label="Priority level">
+            <option value="low">🟢 Low</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="high">🔴 High</option>
+          </select>
+        </div>
+
+        <!-- Sort Dropdown -->
+        <div>
+          <label for="sort" class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+          <select id="sort" class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" aria-label="Sort tasks">
+            <option value="newest">Newest</option>
+            <option value="dueDate">Due Date</option>
+            <option value="priority">Priority</option>
+            <option value="alpha">A-Z</option>
+          </select>
+        </div>
+      </div>
+
+      <button 
+        type="submit" 
+        class="min-tap-target w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800 transition font-semibold"
+        aria-label="Add new task"
+      >
+        ➕ Add Task
+      </button>
     </form>
-    <div id="task-list" class="grid grid-cols-1 md:grid-cols-2 gap-4" role="region" aria-label="Task list"></div>
+
+    <!-- Bulk Actions -->
+    <div id="bulk-actions" class="hidden flex gap-2">
+      <button id="complete-all" class="min-tap-target flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-semibold text-sm">✅ Complete All</button>
+      <button id="clear-completed" class="min-tap-target flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition font-semibold text-sm">🗑️ Clear Done</button>
+    </div>
+
+    <!-- Task List -->
+    <div id="task-list" class="space-y-3" role="region" aria-label="Task list"></div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="text-center py-12 hidden">
+      <p class="text-4xl mb-2">✨</p>
+      <p class="text-gray-600 text-lg">No tasks yet. Add one to get started!</p>
+    </div>
   </main>
+
+  <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
   <script>
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyALBhEKZDpih5cYgvOiOqFswDSh-VKPP3k",
       authDomain: "todo-app-b16da.firebaseapp.com",
@@ -69,18 +206,17 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    // enable offline persistence
-    db.enablePersistence()
-      .catch(function(err) {
-        if (err.code === 'failed-precondition') {
-          // multiple tabs open, persistence can only be enabled
-          console.warn('Persistence failed: multiple tabs open');
-        } else if (err.code === 'unimplemented') {
-          // browser not supported
-          console.warn('Persistence is not available');
-        }
-      });
+    
+    // Enable offline persistence
+    db.enablePersistence().catch(err => {
+      if (err.code === 'failed-precondition') {
+        console.warn('Persistence failed: multiple tabs open');
+      } else if (err.code === 'unimplemented') {
+        console.warn('Persistence is not available');
+      }
+    });
 
+    // DOM Elements
     const signInBtn = document.getElementById('sign-in');
     const signOutBtn = document.getElementById('sign-out');
     const userInfo = document.getElementById('user-info');
@@ -89,10 +225,24 @@
     const taskForm = document.getElementById('task-form');
     const taskList = document.getElementById('task-list');
     const progressBar = document.getElementById('progress-bar');
+    const motivationContainer = document.getElementById('motivation-container');
+    const motivationText = document.getElementById('motivation-text');
+    const taskCount = document.getElementById('task-count');
     const categorySelect = document.getElementById('category');
     const customCategoryInput = document.getElementById('custom-category');
+    const searchInput = document.getElementById('search-input');
+    const sortSelect = document.getElementById('sort');
+    const bulkActionsDiv = document.getElementById('bulk-actions');
+    const completeAllBtn = document.getElementById('complete-all');
+    const clearCompletedBtn = document.getElementById('clear-completed');
+    const emptyState = document.getElementById('empty-state');
 
-    // handle custom category toggle
+    let allTasks = [];
+    let tasksRef;
+    let currentFilter = 'all';
+    let currentSort = 'newest';
+
+    // Category toggle
     categorySelect.addEventListener('change', () => {
       if (categorySelect.value === '__custom__') {
         customCategoryInput.classList.remove('hidden');
@@ -102,33 +252,50 @@
       }
     });
 
-    let tasksRef;
-
+    // Auth State
     auth.onAuthStateChanged(user => {
+      console.log('Auth state changed. User:', user ? user.email : 'none');
       if (user) {
         signInBtn.classList.add('hidden');
         userInfo.classList.remove('hidden');
-        userPic.src = user.photoURL;
-        userName.textContent = user.displayName;
+        userPic.src = user.photoURL || '';
+        userName.textContent = user.displayName || 'User';
         tasksRef = db.collection('users').doc(user.uid).collection('tasks');
-        tasksRef.onSnapshot(renderSnapshot);
+        tasksRef.onSnapshot(snapshot => {
+          console.log('Tasks snapshot received, doc count:', snapshot.size);
+          allTasks = [];
+          snapshot.forEach(doc => allTasks.push({ id: doc.id, ...doc.data() }));
+          renderTasks();
+        }, error => {
+          console.error('Firestore error:', error);
+        });
       } else {
         signInBtn.classList.remove('hidden');
         userInfo.classList.add('hidden');
         taskList.innerHTML = '';
+        allTasks = [];
         progressBar.style.width = '0';
+        taskCount.textContent = '0 tasks';
       }
     });
 
     signInBtn.addEventListener('click', () => {
       const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider);
+      auth.signInWithPopup(provider).catch(error => {
+        console.error('Sign-in error:', error.code, error.message);
+        alert('Sign-in failed: ' + error.message);
+      });
     });
     signOutBtn.addEventListener('click', () => auth.signOut());
 
+    // Add Task
     taskForm.addEventListener('submit', e => {
       e.preventDefault();
-      if (!tasksRef) return;
+      if (!tasksRef) {
+        alert('Please sign in first to add tasks');
+        return;
+      }
+      
       let category = categorySelect.value;
       if (category === '__custom__') {
         category = customCategoryInput.value.trim();
@@ -137,63 +304,262 @@
           return;
         }
       }
+
       const data = {
         text: taskForm['text'].value.trim(),
+        notes: document.getElementById('notes').value.trim(),
         category: category,
         due: taskForm['due'].value || null,
         priority: taskForm['priority'].value,
         completed: false,
+        starred: false,
         created: firebase.firestore.FieldValue.serverTimestamp()
       };
-      tasksRef.add(data);
-      taskForm.reset();
-      customCategoryInput.classList.add('hidden');
-      categorySelect.value = 'Work';
+
+      tasksRef.add(data).then(docRef => {
+        console.log('Task added with ID:', docRef.id);
+        taskForm.reset();
+        customCategoryInput.classList.add('hidden');
+        categorySelect.value = 'Work';
+      }).catch(error => {
+        console.error('Error adding task:', error);
+        alert('Failed to add task: ' + error.message);
+      });
     });
 
-    function renderSnapshot(snapshot) {
-      const tasks = [];
-      snapshot.forEach(doc => tasks.push({ id: doc.id, ...doc.data() }));
-      renderTasks(tasks);
+    // Filter Buttons
+    document.querySelectorAll('.filter-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(b => {
+          b.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+          b.classList.add('border-gray-300', 'text-gray-700', 'bg-white');
+        });
+        btn.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+        btn.classList.remove('border-gray-300', 'text-gray-700', 'bg-white');
+        currentFilter = btn.dataset.filter;
+        renderTasks();
+      });
+    });
+    document.querySelector('[data-filter="all"]').classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
+    document.querySelector('[data-filter="all"]').classList.remove('border-gray-300', 'text-gray-700', 'bg-white');
+
+    // Sort
+    sortSelect.addEventListener('change', (e) => {
+      currentSort = e.target.value;
+      renderTasks();
+    });
+
+    // Search
+    searchInput.addEventListener('input', () => {
+      renderTasks();
+    });
+
+    // Bulk Actions
+    completeAllBtn.addEventListener('click', () => {
+      const filtered = getFilteredTasks();
+      filtered.forEach(t => {
+        tasksRef.doc(t.id).update({ completed: true });
+      });
+    });
+
+    clearCompletedBtn.addEventListener('click', () => {
+      if (confirm('Delete all completed tasks? This cannot be undone.')) {
+        const filtered = getFilteredTasks().filter(t => t.completed);
+        filtered.forEach(t => {
+          tasksRef.doc(t.id).delete();
+        });
+      }
+    });
+
+    // Utility Functions
+    function getToday() {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
     }
 
-    function renderTasks(tasks) {
+    function isToday(dateStr) {
+      return dateStr === getToday();
+    }
+
+    function isOverdue(dateStr, completed) {
+      if (!dateStr || completed) return false;
+      return dateStr < getToday();
+    }
+
+    function getFilteredTasks() {
+      let filtered = [...allTasks];
+      
+      // Search filter
+      const searchTerm = searchInput.value.toLowerCase();
+      if (searchTerm) {
+        filtered = filtered.filter(t => 
+          t.text.toLowerCase().includes(searchTerm) || 
+          (t.notes && t.notes.toLowerCase().includes(searchTerm))
+        );
+      }
+
+      // Status filters
+      if (currentFilter === 'today') {
+        filtered = filtered.filter(t => !t.completed && t.due && isToday(t.due));
+      } else if (currentFilter === 'starred') {
+        filtered = filtered.filter(t => t.starred);
+      } else if (currentFilter === 'completed') {
+        filtered = filtered.filter(t => t.completed);
+      } else if (currentFilter === 'overdue') {
+        filtered = filtered.filter(t => isOverdue(t.due, t.completed));
+      }
+
+      return filtered;
+    }
+
+    function getSortedTasks(tasks) {
+      const sorted = [...tasks];
+      
+      if (currentSort === 'dueDate') {
+        sorted.sort((a, b) => {
+          const aDate = a.due || '9999-12-31';
+          const bDate = b.due || '9999-12-31';
+          return aDate.localeCompare(bDate);
+        });
+      } else if (currentSort === 'priority') {
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        sorted.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+      } else if (currentSort === 'alpha') {
+        sorted.sort((a, b) => a.text.localeCompare(b.text));
+      } else if (currentSort === 'newest') {
+        sorted.sort((a, b) => (b.created || 0) - (a.created || 0));
+      }
+
+      return sorted;
+    }
+
+    function updateMotivation() {
+      const total = allTasks.filter(t => !t.completed).length;
+      const completed = allTasks.filter(t => t.completed).length;
+      
+      if (total === 0) {
+        motivationContainer.classList.add('hidden');
+        return;
+      }
+
+      const pct = Math.round((completed / (completed + total)) * 100);
+      let message = '';
+
+      if (pct === 0) {
+        message = 'Let\'s get started! ✨';
+      } else if (pct < 25) {
+        message = 'Great beginning! 🚀';
+      } else if (pct < 50) {
+        message = 'You\'re halfway there! 💪';
+      } else if (pct < 75) {
+        message = 'Almost done! 🏃';
+      } else if (pct < 100) {
+        message = 'You\'re on fire! 🔥';
+      } else {
+        message = 'Perfect! All tasks done! 🎉';
+      }
+
+      motivationText.textContent = message + ` ${pct}% done`;
+      motivationContainer.classList.remove('hidden');
+    }
+
+    function updateCounts() {
+      const completed = allTasks.filter(t => t.completed).length;
+      const today = allTasks.filter(t => !t.completed && t.due && isToday(t.due)).length;
+      const starred = allTasks.filter(t => t.starred).length;
+      const overdue = allTasks.filter(t => isOverdue(t.due, t.completed)).length;
+      const total = allTasks.length;
+
+      document.getElementById('count-all').textContent = total;
+      document.getElementById('count-today').textContent = today;
+      document.getElementById('count-starred').textContent = starred;
+      document.getElementById('count-completed').textContent = completed;
+      document.getElementById('count-overdue').textContent = overdue;
+
+      taskCount.textContent = (total - completed) + ' task' + (total - completed === 1 ? '' : 's');
+    }
+
+    function renderTasks() {
       taskList.innerHTML = '';
-      let done = 0;
-      tasks.forEach(t => {
-        if (t.completed) done++;
+      updateCounts();
+      updateMotivation();
+
+      const filtered = getFilteredTasks();
+      const sorted = getSortedTasks(filtered);
+      const completed = allTasks.filter(t => t.completed).length;
+      const total = allTasks.length;
+      const pct = total ? Math.round((completed / total) * 100) : 0;
+
+      progressBar.style.width = pct + '%';
+
+      bulkActionsDiv.classList.toggle('hidden', filtered.length === 0);
+
+      if (sorted.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      sorted.forEach(t => {
         const priEmoji = t.priority === 'high' ? '🔴' : t.priority === 'medium' ? '🟡' : '🟢';
         const priColor = t.priority === 'high' ? 'text-red-600' : t.priority === 'medium' ? 'text-amber-600' : 'text-green-600';
+        let borderClass = 'border-gray-200';
+        
+        if (isOverdue(t.due, t.completed)) {
+          borderClass = 'border-red-400';
+        } else if (!t.completed && t.due && isToday(t.due)) {
+          borderClass = 'border-amber-400';
+        }
+
         const card = document.createElement('div');
-        card.className = 'rounded-2xl shadow-lg p-6 hover:shadow-xl transition bg-white border border-gray-100';
+        card.className = `rounded-xl shadow-md p-4 md:p-6 bg-white border-2 ${borderClass} transition hover:shadow-lg ${t.completed ? 'opacity-75' : ''}`;
+        
         card.innerHTML = `
-          <div class="flex justify-between items-start mb-4">
-            <span class="${priColor} text-lg" aria-label="Priority: ${t.priority}" role="img">${priEmoji}</span>
-            <span class="text-gray-800 text-sm font-semibold px-2 py-1 bg-gray-100 rounded" role="label">${t.category}</span>
+          <div class="flex justify-between items-start gap-3 mb-3">
+            <div class="flex items-start gap-2 flex-1">
+              <span class="${priColor} text-lg" aria-label="Priority: ${t.priority}" role="img">${priEmoji}</span>
+              <div class="flex-1">
+                <p class="font-semibold text-gray-900 ${t.completed ? 'line-through opacity-50' : ''} text-base break-words">${t.text}</p>
+                ${t.notes ? `<p class="text-sm text-gray-600 mt-2 break-words">${t.notes}</p>` : ''}
+              </div>
+            </div>
+            <button class="star-btn min-tap-target flex-shrink-0 text-2xl hover:scale-125 transition" data-id="${t.id}" aria-label="${t.starred ? 'Unstar' : 'Star'} task">
+              ${t.starred ? '⭐' : '☆'}
+            </button>
           </div>
-          <div class="mb-4">
-            <p class="font-semibold text-gray-900 ${t.completed? 'line-through opacity-50':''} text-base">${t.text}</p>
-            <p class="text-gray-900 text-sm mt-2"><span class="mr-2 text-gray-600" aria-hidden="true">📅</span><span class="text-gray-800 font-medium">${t.due||'No date set'}</span></p>
+          
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <span class="text-gray-800 text-xs font-semibold px-3 py-1 bg-gray-100 rounded-full">${t.category}</span>
+            <span class="text-gray-600 text-xs">📅 ${t.due ? t.due : 'No date'}</span>
           </div>
-          <div class="flex space-x-2">
-            <button class="complete-btn flex-1 bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800 transition font-medium text-sm" aria-label="${t.completed?'Mark incomplete':'Mark complete'}">${t.completed? '✅ Undo' : '✔️ Done'}</button>
-            <button class="delete-btn flex-1 bg-red-500 text-white py-2 rounded-md hover:bg-red-600 focus:bg-red-600 active:bg-red-700 transition font-medium text-sm" aria-label="Delete task">🗑️ Delete</button>
+
+          <div class="flex gap-2">
+            <button class="complete-btn min-tap-target flex-1 ${t.completed ? 'bg-indigo-600' : 'bg-indigo-500'} text-white py-2 rounded-lg hover:${t.completed ? 'bg-indigo-700' : 'bg-indigo-600'} transition font-medium text-sm" aria-label="${t.completed ? 'Mark incomplete' : 'Mark complete'}">
+              ${t.completed ? '✅ Undo' : '✔️ Done'}
+            </button>
+            <button class="delete-btn min-tap-target flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition font-medium text-sm" aria-label="Delete task">
+              🗑️ Delete
+            </button>
           </div>
         `;
+
         taskList.appendChild(card);
+
         card.querySelector('.complete-btn').addEventListener('click', () => {
           tasksRef.doc(t.id).update({ completed: !t.completed });
         });
+
         card.querySelector('.delete-btn').addEventListener('click', () => {
-          if (confirm('Delete this task? This action cannot be undone.')) tasksRef.doc(t.id).delete();
+          if (confirm('Delete this task? This cannot be undone.')) {
+            tasksRef.doc(t.id).delete();
+          }
+        });
+
+        card.querySelector('.star-btn').addEventListener('click', () => {
+          tasksRef.doc(t.id).update({ starred: !t.starred });
         });
       });
-      updateProgress(done, tasks.length);
-    }
-
-    function updateProgress(done, total) {
-      const pct = total ? Math.round((done/total)*100) : 0;
-      progressBar.style.width = pct + '%';
     }
   </script>
 </body>
