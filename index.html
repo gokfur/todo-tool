@@ -199,13 +199,18 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    auth.getRedirectResult().then(result => {
-      if (result && result.user) {
-        console.log('Signed in via redirect:', result.user.email);
-      }
-    }).catch(err => {
-      if (err.code !== 'auth/no-current-user') {
-        console.error('Redirect error:', err);
+    window.addEventListener('load', async () => {
+      try {
+        const result = await auth.getRedirectResult();
+        if (result && result.user) {
+          console.log('Signed in:', result.user.email);
+        }
+      } catch(err) {
+        console.error('Redirect result error:', err.code, err.message);
+        if (err.code !== 'auth/no-current-user' && 
+            err.code !== 'auth/null-user') {
+          showToast('Sign-in error: ' + err.message, 'error');
+        }
       }
     });
 
@@ -292,20 +297,11 @@
     sheetClose.addEventListener('click', closeSheet);
     sheetOverlay.addEventListener('click', closeSheet);
 
-    // Sign In - ENHANCED SAFARI FIX
+    // Sign In - REDIRECT ONLY
     signInBtn.addEventListener('click', () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      auth.signInWithPopup(provider).catch(err => {
-        console.error('Popup error:', err.code);
-        if (err.code === 'auth/popup-blocked' || 
-            err.code === 'auth/popup-closed-by-user' ||
-            err.code === 'auth/cancelled-popup-request') {
-          auth.signInWithRedirect(provider);
-        } else {
-          showToast('Sign-in failed: ' + err.message, 'error');
-        }
-      });
+      auth.signInWithRedirect(provider);
     });
 
     signOutBtn.addEventListener('click', () => auth.signOut());
