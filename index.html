@@ -200,3 +200,141 @@
 </html>
 
 
+      storageBucket: "todo-app-b16da.firebasestorage.app",
+      messagingSenderId: "576296289477",
+      appId: "1:576296289477:web:8c9b0b3d009f3624cedcac"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    // enable offline persistence
+    db.enablePersistence()
+      .catch(function(err) {
+        if (err.code === 'failed-precondition') {
+          // multiple tabs open, persistence can only be enabled
+          console.warn('Persistence failed: multiple tabs open');
+        } else if (err.code === 'unimplemented') {
+          // browser not supported
+          console.warn('Persistence is not available');
+        }
+      });
+
+    const signInBtn = document.getElementById('sign-in');
+    const signOutBtn = document.getElementById('sign-out');
+    const userInfo = document.getElementById('user-info');
+    const userPic = document.getElementById('user-pic');
+    const userName = document.getElementById('user-name');
+    const taskForm = document.getElementById('task-form');
+    const taskList = document.getElementById('task-list');
+    const progressBar = document.getElementById('progress-bar');
+    const categorySelect = document.getElementById('category');
+    const customCategoryInput = document.getElementById('custom-category');
+
+    // handle custom category toggle
+    categorySelect.addEventListener('change', () => {
+      if (categorySelect.value === '__custom__') {
+        customCategoryInput.classList.remove('hidden');
+        customCategoryInput.focus();
+      } else {
+        customCategoryInput.classList.add('hidden');
+      }
+    });
+
+    let tasksRef;
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        signInBtn.classList.add('hidden');
+        userInfo.classList.remove('hidden');
+        userPic.src = user.photoURL;
+        userName.textContent = user.displayName;
+        tasksRef = db.collection('users').doc(user.uid).collection('tasks');
+        tasksRef.onSnapshot(renderSnapshot);
+      } else {
+        signInBtn.classList.remove('hidden');
+        userInfo.classList.add('hidden');
+        taskList.innerHTML = '';
+        progressBar.style.width = '0';
+      }
+    });
+
+    signInBtn.addEventListener('click', () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    });
+    signOutBtn.addEventListener('click', () => auth.signOut());
+
+    taskForm.addEventListener('submit', e => {
+      e.preventDefault();
+      if (!tasksRef) return;
+      let category = categorySelect.value;
+      if (category === '__custom__') {
+        category = customCategoryInput.value.trim();
+        if (!category) {
+          alert('Please enter a custom category name');
+          return;
+        }
+      }
+      const data = {
+        text: taskForm['text'].value.trim(),
+        category: category,
+        due: taskForm['due'].value || null,
+        priority: taskForm['priority'].value,
+        completed: false,
+        created: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      tasksRef.add(data);
+      taskForm.reset();
+      customCategoryInput.classList.add('hidden');
+      categorySelect.value = 'Work';
+    });
+
+    function renderSnapshot(snapshot) {
+      const tasks = [];
+      snapshot.forEach(doc => tasks.push({ id: doc.id, ...doc.data() }));
+      renderTasks(tasks);
+    }
+
+    function renderTasks(tasks) {
+      taskList.innerHTML = '';
+      let done = 0;
+      tasks.forEach(t => {
+        if (t.completed) done++;
+        const priEmoji = t.priority === 'high' ? '🔴' : t.priority === 'medium' ? '🟡' : '🟢';
+        const priColor = t.priority === 'high' ? 'text-red-600' : t.priority === 'medium' ? 'text-amber-600' : 'text-green-600';
+        const card = document.createElement('div');
+        card.className = 'rounded-2xl shadow-lg p-6 hover:shadow-xl transition bg-white border border-gray-100';
+        card.innerHTML = `
+          <div class="flex justify-between items-start mb-4">
+            <span class="${priColor} text-lg" aria-label="Priority: ${t.priority}" role="img">${priEmoji}</span>
+            <span class="text-gray-800 text-sm font-semibold px-2 py-1 bg-gray-100 rounded" role="label">${t.category}</span>
+          </div>
+          <div class="mb-4">
+            <p class="font-semibold text-gray-900 ${t.completed? 'line-through opacity-50':''} text-base">${t.text}</p>
+            <p class="text-gray-900 text-sm mt-2"><span class="mr-2 text-gray-600" aria-hidden="true">📅</span><span class="text-gray-800 font-medium">${t.due||'No date set'}</span></p>
+          </div>
+          <div class="flex space-x-2">
+            <button class="complete-btn flex-1 bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800 transition font-medium text-sm" aria-label="${t.completed?'Mark incomplete':'Mark complete'}">${t.completed? '✅ Undo' : '✔️ Done'}</button>
+            <button class="delete-btn flex-1 bg-red-500 text-white py-2 rounded-md hover:bg-red-600 focus:bg-red-600 active:bg-red-700 transition font-medium text-sm" aria-label="Delete task">🗑️ Delete</button>
+          </div>
+        `;
+        taskList.appendChild(card);
+        card.querySelector('.complete-btn').addEventListener('click', () => {
+          tasksRef.doc(t.id).update({ completed: !t.completed });
+        });
+        card.querySelector('.delete-btn').addEventListener('click', () => {
+          if (confirm('Delete this task? This action cannot be undone.')) tasksRef.doc(t.id).delete();
+        });
+      });
+      updateProgress(done, tasks.length);
+    }
+
+    function updateProgress(done, total) {
+      const pct = total ? Math.round((done/total)*100) : 0;
+      progressBar.style.width = pct + '%';
+    }
+  </script>
+</body>
+</html>
+
+
