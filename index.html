@@ -199,6 +199,16 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    auth.getRedirectResult().then(result => {
+      if (result && result.user) {
+        console.log('Signed in via redirect:', result.user.email);
+      }
+    }).catch(err => {
+      if (err.code !== 'auth/no-current-user') {
+        console.error('Redirect error:', err);
+      }
+    });
+
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     db.enablePersistence().catch(err => console.warn('Persistence error:', err));
 
@@ -282,12 +292,18 @@
     sheetClose.addEventListener('click', closeSheet);
     sheetOverlay.addEventListener('click', closeSheet);
 
-    // Sign In - CRITICAL SAFARI FIX
+    // Sign In - ENHANCED SAFARI FIX
     signInBtn.addEventListener('click', () => {
       const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       auth.signInWithPopup(provider).catch(err => {
-        if(err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        console.error('Popup error:', err.code);
+        if (err.code === 'auth/popup-blocked' || 
+            err.code === 'auth/popup-closed-by-user' ||
+            err.code === 'auth/cancelled-popup-request') {
           auth.signInWithRedirect(provider);
+        } else {
+          showToast('Sign-in failed: ' + err.message, 'error');
         }
       });
     });
