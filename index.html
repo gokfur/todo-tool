@@ -90,56 +90,70 @@
         </form>
         <ul id="task-list"></ul>
     </div>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
+        // initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyALBhEKZDpih5cYgvOiOqFswDSh-VKPP3k",
+            authDomain: "todo-app-b16da.firebaseapp.com",
+            projectId: "todo-app-b16da",
+            storageBucket: "todo-app-b16da.firebasestorage.app",
+            messagingSenderId: "576296289477",
+            appId: "1:576296289477:web:8c9b0b3d009f3624cedcac"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const tasksCol = db.collection('tasks');
+
         const taskForm = document.getElementById('task-form');
         const taskInput = document.getElementById('task-input');
         const taskList = document.getElementById('task-list');
 
-        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-
-        function renderTasks() {
+        // render function uses array of task objects with id, text, completed
+        function renderTasks(tasks) {
             taskList.innerHTML = '';
-            tasks.forEach((task, index) => {
+            tasks.forEach(task => {
                 const li = document.createElement('li');
                 li.className = task.completed ? 'completed' : '';
                 li.innerHTML = `
-                    <span class="task-text" data-index="${index}">${task.text}</span>
-                    <button class="delete-btn" data-index="${index}">Delete</button>
+                    <span class="task-text" data-id="${task.id}" data-completed="${task.completed}">${task.text}</span>
+                    <button class="delete-btn" data-id="${task.id}">Delete</button>
                 `;
                 taskList.appendChild(li);
             });
         }
 
-        function saveTasks() {
-            localStorage.setItem('tasks', JSON.stringify(tasks));
-        }
+        // listen for realtime updates
+        tasksCol.onSnapshot(snapshot => {
+            const tasks = [];
+            snapshot.forEach(doc => {
+                tasks.push({ id: doc.id, ...doc.data() });
+            });
+            renderTasks(tasks);
+        });
 
-        taskForm.addEventListener('submit', (e) => {
+        taskForm.addEventListener('submit', e => {
             e.preventDefault();
             const taskText = taskInput.value.trim();
             if (taskText) {
-                tasks.push({ text: taskText, completed: false });
-                saveTasks();
-                renderTasks();
+                tasksCol.add({ text: taskText, completed: false });
                 taskInput.value = '';
             }
         });
 
-        taskList.addEventListener('click', (e) => {
+        taskList.addEventListener('click', e => {
+            const id = e.target.dataset.id;
+            if (!id) return;
+
             if (e.target.classList.contains('task-text')) {
-                const index = e.target.dataset.index;
-                tasks[index].completed = !tasks[index].completed;
-                saveTasks();
-                renderTasks();
+                const completed = e.target.dataset.completed === 'true';
+                tasksCol.doc(id).update({ completed: !completed });
             } else if (e.target.classList.contains('delete-btn')) {
-                const index = e.target.dataset.index;
-                tasks.splice(index, 1);
-                saveTasks();
-                renderTasks();
+                tasksCol.doc(id).delete();
             }
         });
-
-        renderTasks();
     </script>
 </body>
 </html>
