@@ -297,11 +297,34 @@
     sheetClose.addEventListener('click', closeSheet);
     sheetOverlay.addEventListener('click', closeSheet);
 
-    // Sign In - REDIRECT ONLY
-    signInBtn.addEventListener('click', () => {
+    // Sign In - POPUP FIRST, REDIRECT FALLBACK
+    signInBtn.addEventListener('click', async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      auth.signInWithRedirect(provider);
+      
+      try {
+        // Try popup first (works better with sessionStorage)
+        await auth.signInWithPopup(provider);
+      } catch (err) {
+        console.log('Popup failed:', err.code);
+        
+        // Fallback to redirect if popup blocked/unavailable
+        if (err.code === 'auth/popup-blocked' || 
+            err.code === 'auth/popup-closed-by-user' ||
+            err.code === 'auth/cancelled-popup-request') {
+          try {
+            await auth.signInWithRedirect(provider);
+          } catch (redirectErr) {
+            if (redirectErr.code === 'auth/operation-not-supported-in-this-environment') {
+              showToast('Sign-in unavailable in private browsing. Try normal mode.', 'error');
+            } else {
+              showToast('Sign-in failed: ' + redirectErr.message, 'error');
+            }
+          }
+        } else {
+          showToast('Sign-in failed: ' + err.message, 'error');
+        }
+      }
     });
 
     signOutBtn.addEventListener('click', () => auth.signOut());
