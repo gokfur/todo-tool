@@ -174,18 +174,18 @@
         class="min-tap-target w-full bg-indigo-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800 transition font-semibold text-sm sm:text-base"
         aria-label="Add new task"
       >
-        ➕ Add Task
+        <span class="text-white">➕</span> Add Task
       </button>
     </form>
 
-    <!-- Bulk Actions -->
-    <div id="bulk-actions" class="hidden flex gap-2 sm:gap-3">
-      <button id="complete-all" class="min-tap-target flex-1 bg-green-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-green-700 transition font-semibold text-xs sm:text-sm">✅ Complete All</button>
-      <button id="clear-completed" class="min-tap-target flex-1 bg-red-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-red-700 transition font-semibold text-xs sm:text-sm">🗑️ Clear Done</button>
-    </div>
-
     <!-- Task List -->
     <div id="task-list" class="space-y-2 sm:space-y-3" role="region" aria-label="Task list"></div>
+
+    <!-- Bulk Actions -->
+    <div id="bulk-actions" class="hidden flex gap-2 sm:gap-3">
+      <button id="complete-all" class="min-tap-target flex-1 bg-indigo-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-indigo-700 transition font-semibold text-xs sm:text-sm">✅ Complete All</button>
+      <button id="clear-completed" class="min-tap-target flex-1 bg-red-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-red-700 transition font-semibold text-xs sm:text-sm">🗑️ Remove All Completed</button>
+    </div>
 
     <!-- Empty State -->
     <div id="empty-state" class="text-center py-8 sm:py-12 hidden">
@@ -221,6 +221,20 @@
         console.warn('Persistence is not available');
       }
     });
+
+    // Handle redirect result for mobile sign-in
+    auth.getRedirectResult().then(result => {
+      if (result.user) {
+        console.log('Redirect sign-in successful');
+      }
+    }).catch(error => {
+      console.error('Redirect sign-in error:', error);
+    });
+
+    // Detect mobile device
+    function isMobile() {
+      return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
 
     // DOM Elements
     const signInBtn = document.getElementById('sign-in');
@@ -287,10 +301,11 @@
 
     signInBtn.addEventListener('click', () => {
       const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(error => {
-        console.error('Sign-in error:', error.code, error.message);
-        alert('Sign-in failed: ' + error.message);
-      });
+      if (isMobile()) {
+        auth.signInWithRedirect(provider);
+      } else {
+        auth.signInWithPopup(provider);
+      }
     });
     signOutBtn.addEventListener('click', () => auth.signOut());
 
@@ -542,10 +557,10 @@
 
           <div class="flex gap-2">
             <button class="complete-btn min-tap-target flex-1 ${t.completed ? 'bg-indigo-600' : 'bg-indigo-500'} text-white py-2 rounded-lg hover:${t.completed ? 'bg-indigo-700' : 'bg-indigo-600'} transition font-medium text-xs sm:text-sm" aria-label="${t.completed ? 'Mark incomplete' : 'Mark complete'}">
-              ${t.completed ? '✅ Undo' : '✔️ Done'}
+              ${t.completed ? '↩️ Undo' : '✅ Complete'}
             </button>
-            <button class="delete-btn min-tap-target flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition font-medium text-xs sm:text-sm" aria-label="Delete task">
-              🗑️ Delete
+            <button class="delete-btn min-tap-target flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition font-medium text-xs sm:text-sm" aria-label="Remove task">
+              🗑️ Remove
             </button>
           </div>
         `;
