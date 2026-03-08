@@ -1,160 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List App</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        #task-form {
-            display: flex;
-            margin-bottom: 20px;
-        }
-        #task-input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px 0 0 4px;
-            outline: none;
-        }
-        button {
-            padding: 10px 15px;
-            border: none;
-            background-color: #28a745;
-            color: white;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        li.completed {
-            text-decoration: line-through;
-            color: #888;
-        }
-        .task-text {
-            flex: 1;
-            cursor: pointer;
-        }
-        .delete-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .delete-btn:hover {
-            background-color: #c82333;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium To-Do App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body{font-family:'Inter',sans-serif;}
+    button:focus, input:focus, select:focus { outline: 2px solid #4f46e5; outline-offset: 2px; }
+    ::selection { background: #4f46e5; color: white; }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <h1>To-Do List</h1>
-        <form id="task-form">
-            <input type="text" id="task-input" placeholder="Add a new task" required>
-            <button type="submit">Add Task</button>
-        </form>
-        <ul id="task-list"></ul>
+<body class="bg-white antialiased" style="font-family: Inter, sans-serif;">
+  <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 flex flex-wrap items-center justify-between">
+    <div class="text-xl font-bold">My To‑Do</div>
+    <div class="flex items-center space-x-4">
+      <div id="user-info" class="hidden items-center space-x-2">
+        <img id="user-pic" class="w-8 h-8 rounded-full" src="" alt="">
+        <span id="user-name" class="font-medium"></span>
+        <button id="sign-out" class="bg-white text-indigo-600 px-3 py-1 rounded-full text-sm">Sign out</button>
+      </div>
+      <button id="sign-in" class="bg-white text-indigo-600 px-4 py-2 rounded-full text-sm">Sign in with Google</button>
     </div>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script>
-        // initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyALBhEKZDpih5cYgvOiOqFswDSh-VKPP3k",
-            authDomain: "todo-app-b16da.firebaseapp.com",
-            projectId: "todo-app-b16da",
-            storageBucket: "todo-app-b16da.firebasestorage.app",
-            messagingSenderId: "576296289477",
-            appId: "1:576296289477:web:8c9b0b3d009f3624cedcac"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const tasksCol = db.collection('tasks');
-
-        const taskForm = document.getElementById('task-form');
-        const taskInput = document.getElementById('task-input');
-        const taskList = document.getElementById('task-list');
-
-        // render function uses array of task objects with id, text, completed
-        function renderTasks(tasks) {
-            taskList.innerHTML = '';
-            tasks.forEach(task => {
-                const li = document.createElement('li');
-                li.className = task.completed ? 'completed' : '';
-                li.innerHTML = `
-                    <span class="task-text" data-id="${task.id}" data-completed="${task.completed}">${task.text}</span>
-                    <button class="delete-btn" data-id="${task.id}">Delete</button>
-                `;
-                taskList.appendChild(li);
-            });
+  </header>
+  <div id="progress-container" class="w-full h-2 bg-gray-200">
+    <div id="progress-bar" class="h-2 bg-indigo-600 w-0"></div>
+  </div>
+  <main class="max-w-3xl mx-auto p-4">
+    <form id="task-form" class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4" role="form" aria-label="Add new task">
+      <label for="text" class="sr-only">Task description</label>
+      <input type="text" id="text" placeholder="Task description" required aria-required="true" class="col-span-1 md:col-span-2 p-4 border rounded text-gray-900 placeholder-gray-600" />
+      <div class="relative">
+        <label for="category" class="sr-only">Category</label>
+        <select id="category" class="p-4 border rounded w-full text-gray-900" aria-label="Task category">
+          <option value="Work">Work</option>
+          <option value="Personal">Personal</option>
+          <option value="Shopping">Shopping</option>
+          <option value="Health">Health</option>
+          <option value="__custom__">+ Custom</option>
+        </select>
+      </div>
+      <input type="text" id="custom-category" placeholder="Custom category" class="hidden p-4 border rounded text-gray-900 placeholder-gray-600" aria-label="Custom category name" />
+      <label for="due" class="sr-only">Due date</label>
+      <input type="date" id="due" class="p-4 border rounded text-gray-900" aria-label="Due date" />
+      <label for="priority" class="sr-only">Priority</label>
+      <select id="priority" class="p-4 border rounded text-gray-900" aria-label="Priority level">
+        <option value="high">🔴 High</option>
+        <option value="medium">🟡 Medium</option>
+        <option value="low">🟢 Low</option>
+      </select>
+      <button type="submit" class="col-span-1 md:col-span-4 bg-indigo-600 text-white py-4 rounded-lg hover:bg-indigo-700 focus:bg-indigo-700 transition font-semibold" aria-label="Add new task">Add</button>
+    </form>
+    <div id="task-list" class="grid grid-cols-1 md:grid-cols-2 gap-4" role="region" aria-label="Task list"></div>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyALBhEKZDpih5cYgvOiOqFswDSh-VKPP3k",
+      authDomain: "todo-app-b16da.firebaseapp.com",
+      projectId: "todo-app-b16da",
+      storageBucket: "todo-app-b16da.firebasestorage.app",
+      messagingSenderId: "576296289477",
+      appId: "1:576296289477:web:8c9b0b3d009f3624cedcac"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    // enable offline persistence
+    db.enablePersistence()
+      .catch(function(err) {
+        if (err.code === 'failed-precondition') {
+          // multiple tabs open, persistence can only be enabled
+          console.warn('Persistence failed: multiple tabs open');
+        } else if (err.code === 'unimplemented') {
+          // browser not supported
+          console.warn('Persistence is not available');
         }
+      });
 
-        // listen for realtime updates
-        tasksCol.onSnapshot(snapshot => {
-            const tasks = [];
-            snapshot.forEach(doc => {
-                tasks.push({ id: doc.id, ...doc.data() });
-            });
-            renderTasks(tasks);
+    const signInBtn = document.getElementById('sign-in');
+    const signOutBtn = document.getElementById('sign-out');
+    const userInfo = document.getElementById('user-info');
+    const userPic = document.getElementById('user-pic');
+    const userName = document.getElementById('user-name');
+    const taskForm = document.getElementById('task-form');
+    const taskList = document.getElementById('task-list');
+    const progressBar = document.getElementById('progress-bar');
+    const categorySelect = document.getElementById('category');
+    const customCategoryInput = document.getElementById('custom-category');
+
+    // handle custom category toggle
+    categorySelect.addEventListener('change', () => {
+      if (categorySelect.value === '__custom__') {
+        customCategoryInput.classList.remove('hidden');
+        customCategoryInput.focus();
+      } else {
+        customCategoryInput.classList.add('hidden');
+      }
+    });
+
+    let tasksRef;
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        signInBtn.classList.add('hidden');
+        userInfo.classList.remove('hidden');
+        userPic.src = user.photoURL;
+        userName.textContent = user.displayName;
+        tasksRef = db.collection('users').doc(user.uid).collection('tasks');
+        tasksRef.onSnapshot(renderSnapshot);
+      } else {
+        signInBtn.classList.remove('hidden');
+        userInfo.classList.add('hidden');
+        taskList.innerHTML = '';
+        progressBar.style.width = '0';
+      }
+    });
+
+    signInBtn.addEventListener('click', () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    });
+    signOutBtn.addEventListener('click', () => auth.signOut());
+
+    taskForm.addEventListener('submit', e => {
+      e.preventDefault();
+      if (!tasksRef) return;
+      let category = categorySelect.value;
+      if (category === '__custom__') {
+        category = customCategoryInput.value.trim();
+        if (!category) {
+          alert('Please enter a custom category name');
+          return;
+        }
+      }
+      const data = {
+        text: taskForm['text'].value.trim(),
+        category: category,
+        due: taskForm['due'].value || null,
+        priority: taskForm['priority'].value,
+        completed: false,
+        created: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      tasksRef.add(data);
+      taskForm.reset();
+      customCategoryInput.classList.add('hidden');
+      categorySelect.value = 'Work';
+    });
+
+    function renderSnapshot(snapshot) {
+      const tasks = [];
+      snapshot.forEach(doc => tasks.push({ id: doc.id, ...doc.data() }));
+      renderTasks(tasks);
+    }
+
+    function renderTasks(tasks) {
+      taskList.innerHTML = '';
+      let done = 0;
+      tasks.forEach(t => {
+        if (t.completed) done++;
+        const priEmoji = t.priority === 'high' ? '🔴' : t.priority === 'medium' ? '🟡' : '🟢';
+        const priColor = t.priority === 'high' ? 'text-red-600' : t.priority === 'medium' ? 'text-amber-600' : 'text-green-600';
+        const card = document.createElement('div');
+        card.className = 'rounded-2xl shadow-lg p-6 hover:shadow-xl transition bg-white border border-gray-100';
+        card.innerHTML = `
+          <div class="flex justify-between items-start mb-4">
+            <span class="${priColor} text-lg" aria-label="Priority: ${t.priority}" role="img">${priEmoji}</span>
+            <span class="text-gray-800 text-sm font-semibold px-2 py-1 bg-gray-100 rounded" role="label">${t.category}</span>
+          </div>
+          <div class="mb-4">
+            <p class="font-semibold text-gray-900 ${t.completed? 'line-through opacity-50':''} text-base">${t.text}</p>
+            <p class="text-gray-900 text-sm mt-2"><span class="mr-2 text-gray-600" aria-hidden="true">📅</span><span class="text-gray-800 font-medium">${t.due||'No date set'}</span></p>
+          </div>
+          <div class="flex space-x-2">
+            <button class="complete-btn flex-1 bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-800 transition font-medium text-sm" aria-label="${t.completed?'Mark incomplete':'Mark complete'}">${t.completed? '✅ Undo' : '✔️ Done'}</button>
+            <button class="delete-btn flex-1 bg-red-500 text-white py-2 rounded-md hover:bg-red-600 focus:bg-red-600 active:bg-red-700 transition font-medium text-sm" aria-label="Delete task">🗑️ Delete</button>
+          </div>
+        `;
+        taskList.appendChild(card);
+        card.querySelector('.complete-btn').addEventListener('click', () => {
+          tasksRef.doc(t.id).update({ completed: !t.completed });
         });
-
-        taskForm.addEventListener('submit', e => {
-            e.preventDefault();
-            const taskText = taskInput.value.trim();
-            if (taskText) {
-                tasksCol.add({ text: taskText, completed: false });
-                taskInput.value = '';
-            }
+        card.querySelector('.delete-btn').addEventListener('click', () => {
+          if (confirm('Delete this task? This action cannot be undone.')) tasksRef.doc(t.id).delete();
         });
+      });
+      updateProgress(done, tasks.length);
+    }
 
-        taskList.addEventListener('click', e => {
-            const id = e.target.dataset.id;
-            if (!id) return;
-
-            if (e.target.classList.contains('task-text')) {
-                const completed = e.target.dataset.completed === 'true';
-                tasksCol.doc(id).update({ completed: !completed });
-            } else if (e.target.classList.contains('delete-btn')) {
-                tasksCol.doc(id).delete();
-            }
-        });
-    </script>
+    function updateProgress(done, total) {
+      const pct = total ? Math.round((done/total)*100) : 0;
+      progressBar.style.width = pct + '%';
+    }
+  </script>
 </body>
 </html>
 
