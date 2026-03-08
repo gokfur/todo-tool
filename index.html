@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Taskly">
+  <meta name="referrer" content="no-referrer-when-downgrade">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
   <title>Taskly</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -28,6 +29,22 @@
     }
     .animate-fade-in {
       animation: fade-in 0.3s ease-out;
+    }
+    .filter-tab {
+      position: relative;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+    .filter-tab.active {
+      border-bottom-color: #4f46e5;
+      color: #4f46e5;
+    }
+    .filter-tab:not(.active) {
+      border-bottom-color: transparent;
+      color: #6b7280;
+    }
+    .filter-tab:hover:not(.active) {
+      color: #4b5563;
     }
   </style>
 </head>
@@ -92,28 +109,37 @@
       />
     </div>
 
-    <!-- Filter Pills -->
-    <div class="filter-scroll flex gap-1.5 sm:gap-2 py-2 -mx-3 sm:-mx-4 px-3 sm:px-4 flex-nowrap" id="filter-container">
-      <button class="filter-pill min-tap-target px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap border-2 transition flex items-center gap-1" data-filter="all">
-        All <span class="bg-indigo-100 text-indigo-700 rounded-full px-1.5 sm:px-2 py-0.5 text-xs" id="count-all">0</span>
-      </button>
-      <button class="filter-pill min-tap-target px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap border-2 transition flex items-center gap-1" data-filter="today">
-        ☀️ <span class="hidden sm:inline">Today</span> <span class="bg-gray-200 text-gray-700 rounded-full px-1.5 sm:px-2 py-0.5 text-xs" id="count-today">0</span>
-      </button>
-      <button class="filter-pill min-tap-target px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap border-2 transition flex items-center gap-1" data-filter="starred">
-        ⭐ <span class="hidden sm:inline">Star</span> <span class="bg-gray-200 text-gray-700 rounded-full px-1.5 sm:px-2 py-0.5 text-xs" id="count-starred">0</span>
-      </button>
-      <button class="filter-pill min-tap-target px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap border-2 transition flex items-center gap-1" data-filter="completed">
-        ✅ <span class="hidden sm:inline">Done</span> <span class="bg-gray-200 text-gray-700 rounded-full px-1.5 sm:px-2 py-0.5 text-xs" id="count-completed">0</span>
-      </button>
-      <button class="filter-pill min-tap-target px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap border-2 transition flex items-center gap-1" data-filter="overdue">
-        🔴 <span class="hidden sm:inline">Over</span> <span class="bg-red-100 text-red-700 rounded-full px-1.5 sm:px-2 py-0.5 text-xs" id="count-overdue">0</span>
+    <!-- Filter Tabs -->
+    <div class="border-b border-gray-200 bg-gray-50 sticky top-12 z-40 -mx-3 sm:-mx-4 px-3 sm:px-4">
+      <div class="filter-scroll flex gap-4 overflow-x-auto">
+        <button class="filter-tab active min-tap-target py-3 px-1 text-xs sm:text-sm font-semibold whitespace-nowrap transition" data-filter="all">
+          All Tasks <span class="text-xs bg-indigo-100 text-indigo-700 ml-1 px-2 py-0.5 rounded inline" id="count-all">0</span>
+        </button>
+        <button class="filter-tab min-tap-target py-3 px-1 text-xs sm:text-sm font-semibold whitespace-nowrap transition" data-filter="today">
+          ☀️ Today <span class="text-xs bg-gray-200 text-gray-700 ml-1 px-2 py-0.5 rounded inline" id="count-today">0</span>
+        </button>
+        <button class="filter-tab min-tap-target py-3 px-1 text-xs sm:text-sm font-semibold whitespace-nowrap transition" data-filter="starred">
+          ⭐ Starred <span class="text-xs bg-gray-200 text-gray-700 ml-1 px-2 py-0.5 rounded inline" id="count-starred">0</span>
+        </button>
+        <button class="filter-tab min-tap-target py-3 px-1 text-xs sm:text-sm font-semibold whitespace-nowrap transition" data-filter="completed">
+          ✅ Done <span class="text-xs bg-gray-200 text-gray-700 ml-1 px-2 py-0.5 rounded inline" id="count-completed">0</span>
+        </button>
+        <button class="filter-tab min-tap-target py-3 px-1 text-xs sm:text-sm font-semibold whitespace-nowrap transition" data-filter="overdue">
+          🔴 Overdue <span class="text-xs bg-red-100 text-red-700 ml-1 px-2 py-0.5 rounded inline" id="count-overdue">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Add Task Toggle -->
+    <div class="flex justify-between items-center mb-3 sm:mb-4">
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-900">Tasks</h2>
+      <button id="add-task-toggle" class="min-tap-target bg-indigo-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg hover:bg-indigo-700 transition font-semibold text-xs sm:text-sm">
+        ➕ Add Task
       </button>
     </div>
 
-    <!-- Add Task Form -->
-    <form id="task-form" class="bg-white rounded-xl shadow-md p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4" role="form" aria-label="Add new task">
-      <h2 class="text-base sm:text-lg font-semibold text-gray-900">Add New Task</h2>
+    <!-- Add Task Form (collapsible) -->
+    <form id="task-form" class="hidden bg-white rounded-xl shadow-md p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 mb-4 sm:mb-5" role="form" aria-label="Add new task">
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <!-- Task Title -->
@@ -169,7 +195,7 @@
         ></textarea>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         <!-- Due Date -->
         <div>
           <label for="due" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">Due Date</label>
@@ -190,17 +216,6 @@
             <option value="high">🔴 High</option>
           </select>
         </div>
-
-        <!-- Sort Dropdown -->
-        <div>
-          <label for="sort" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">Sort By</label>
-          <select id="sort" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg text-sm sm:text-base text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" aria-label="Sort tasks">
-            <option value="newest">Newest</option>
-            <option value="dueDate">Due Date</option>
-            <option value="priority">Priority</option>
-            <option value="alpha">A-Z</option>
-          </select>
-        </div>
       </div>
 
       <button 
@@ -212,16 +227,27 @@
       </button>
     </form>
 
-    <!-- Task List -->
-    <div id="task-list" class="space-y-2 sm:space-y-3" role="region" aria-label="Task list"></div>
+    <!-- Sort Dropdown Row -->
+    <div class="flex justify-end mb-3 sm:mb-4">
+      <div class="flex items-center gap-2">
+        <label for="sort" class="text-xs sm:text-sm font-medium text-gray-700">Sort:</label>
+        <select id="sort" class="p-2 sm:p-2.5 border border-gray-300 rounded-lg text-xs sm:text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" aria-label="Sort tasks">
+          <option value="newest">Newest</option>
+          <option value="dueDate">Due Date</option>
+          <option value="priority">Priority</option>
+          <option value="alpha">A-Z</option>
+        </select>
+      </div>
+    </div>
 
-    <!-- Bulk Actions -->
-    <div id="bulk-actions" class="hidden flex gap-2 sm:gap-3">
+    <!-- Bulk Actions Row -->
+    <div id="bulk-actions" class="hidden flex gap-2 sm:gap-3 mb-4 sm:mb-5">
       <button id="complete-all" class="min-tap-target flex-1 bg-indigo-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-indigo-700 transition font-semibold text-xs sm:text-sm">✅ Complete All</button>
       <button id="clear-completed" class="min-tap-target flex-1 bg-red-600 text-white py-2.5 sm:py-3 rounded-lg hover:bg-red-700 transition font-semibold text-xs sm:text-sm">🗑️ Remove All Completed</button>
     </div>
 
-    <!-- Empty State -->
+    <!-- Task List -->
+    <div id="task-list" class="space-y-4" role="region" aria-label="Task list"></div>
     <div id="empty-state" class="text-center py-8 sm:py-12 hidden">
       <p class="text-3xl sm:text-4xl mb-2">📝</p>
       <p class="text-gray-600 text-base sm:text-lg font-medium">Ready to get organized?</p>
@@ -276,17 +302,6 @@
       }
     });
 
-    // Handle redirect result for mobile sign-in
-    auth.getRedirectResult().then(result => {
-      if (result.user) {
-        console.log('Redirect sign-in successful:', result.user.email);
-      }
-    }).catch(error => {
-      if (error.code !== 'auth/no-redirect-result') {
-        console.error('Redirect sign-in error:', error);
-      }
-    });
-
     // Detect mobile device
     function isMobile() {
       return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -318,6 +333,19 @@
     document.addEventListener('DOMContentLoaded', () => {
       const overlay = document.getElementById('loading-overlay');
       if (overlay) overlay.style.display = 'none';
+      
+      // Handle redirect result for mobile sign-in
+      auth.getRedirectResult().then(result => {
+        if (result.user) {
+          console.log('Redirect sign-in successful:', result.user.email);
+          // Force page reload to properly initialize auth state
+          window.location.reload();
+        }
+      }).catch(error => {
+        if (error.code !== 'auth/no-redirect-result') {
+          console.error('Redirect sign-in error:', error);
+        }
+      });
     });
 
     // Fallback: hide after 2 seconds regardless
@@ -542,21 +570,30 @@
       }
     });
 
-    // Filter Buttons
-    document.querySelectorAll('.filter-pill').forEach(btn => {
+    // Add Task Toggle
+    const addTaskToggle = document.getElementById('add-task-toggle');
+    addTaskToggle.addEventListener('click', () => {
+      taskForm.classList.toggle('hidden');
+      if (!taskForm.classList.contains('hidden')) {
+        document.getElementById('text').focus();
+      }
+    });
+
+    // Filter Tabs
+    document.querySelectorAll('.filter-tab').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-pill').forEach(b => {
-          b.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
-          b.classList.add('border-gray-300', 'text-gray-700', 'bg-white');
+        document.querySelectorAll('.filter-tab').forEach(b => {
+          b.classList.remove('active', 'border-indigo-600', 'text-indigo-600');
+          b.classList.add('text-gray-600');
         });
-        btn.classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
-        btn.classList.remove('border-gray-300', 'text-gray-700', 'bg-white');
+        btn.classList.add('active', 'border-indigo-600', 'text-indigo-600');
+        btn.classList.remove('text-gray-600');
         currentFilter = btn.dataset.filter;
         renderTasks();
       });
     });
-    document.querySelector('[data-filter="all"]').classList.add('border-indigo-600', 'text-indigo-600', 'bg-indigo-50');
-    document.querySelector('[data-filter="all"]').classList.remove('border-gray-300', 'text-gray-700', 'bg-white');
+    document.querySelector('[data-filter="all"]').classList.add('active', 'border-indigo-600', 'text-indigo-600');
+    document.querySelector('[data-filter="all"]').classList.remove('text-gray-600');
 
     // Sort
     sortSelect.addEventListener('change', (e) => {
@@ -764,26 +801,26 @@
         card.className = `rounded-lg shadow-md p-3 sm:p-4 bg-white border-2 ${borderClass} transition hover:shadow-lg ${t.completed ? 'opacity-75' : ''}`;
         
         card.innerHTML = `
-          <div class="flex justify-between items-start gap-2 mb-2 sm:mb-3">
-            <div class="flex items-start gap-2 flex-1 min-w-0">
-              <span class="${priColor} text-base sm:text-lg flex-shrink-0" aria-label="Priority: ${t.priority}" role="img">${priEmoji}</span>
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3 sm:mb-3">
+            <div class="flex items-start gap-3 flex-1 min-w-0">
+              <span class="${priColor} text-xl sm:text-2xl flex-shrink-0 pt-0.5" aria-label="Priority: ${t.priority}" role="img">${priEmoji}</span>
               <div class="flex-1 min-w-0">
                 <p class="font-semibold text-gray-900 ${t.completed ? 'line-through opacity-50' : ''} text-sm sm:text-base break-words">${t.text}</p>
-                ${t.notes ? `<p class="text-xs sm:text-sm text-gray-600 mt-1 break-words">${t.notes}</p>` : ''}
+                ${t.notes ? `<p class="text-xs sm:text-sm text-gray-600 mt-2 break-words">${t.notes}</p>` : ''}
               </div>
             </div>
-            <button class="star-btn min-tap-target flex-shrink-0 text-xl sm:text-2xl hover:scale-125 transition" data-id="${t.id}" aria-label="${t.starred ? 'Unstar' : 'Star'} task">
+            <button class="star-btn min-tap-target flex-shrink-0 text-xl sm:text-2xl hover:scale-125 transition absolute sm:static top-3 right-3 sm:top-auto sm:right-auto" data-id="${t.id}" aria-label="${t.starred ? 'Unstar' : 'Star'} task">
               ${t.starred ? '⭐' : '☆'}
             </button>
           </div>
           
-          <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-            <span class="text-gray-800 text-xs font-semibold px-2 sm:px-3 py-1 bg-gray-100 rounded-full">${t.category}</span>
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            <span class="text-gray-800 text-xs font-semibold px-2 py-1 bg-gray-100 rounded-full">${t.category}</span>
             <span class="text-gray-600 text-xs">📅 ${t.due ? t.due : 'No date'}</span>
             <span class="text-gray-500 text-xs">📝 ${formatDate(t.created)}</span>
           </div>
 
-          <div class="flex gap-2">
+          <div class="flex gap-2 sm:gap-3">
             <button class="complete-btn min-tap-target flex-1 ${t.completed ? 'bg-indigo-600' : 'bg-indigo-500'} text-white py-2 rounded-lg hover:${t.completed ? 'bg-indigo-700' : 'bg-indigo-600'} transition font-medium text-xs sm:text-sm" aria-label="${t.completed ? 'Mark incomplete' : 'Mark complete'}">
               ${t.completed ? '↩️ Undo' : '✅ Complete'}
             </button>
