@@ -46,7 +46,7 @@
   </div>
 
   <!-- Toast Notifications -->
-  <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2"></div>
+    <div id="toast-container" class="fixed top-20 right-2 left-2 sm:right-4 sm:left-auto z-50 space-y-2 max-w-xs"></div>
   <!-- Header -->
   <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white sticky top-0 z-50 shadow-md">
     <div class="max-w-3xl mx-auto px-4 py-3 sm:py-4">
@@ -56,7 +56,7 @@
           <div class="text-xs sm:text-sm font-semibold bg-white bg-opacity-20 px-2 py-1 sm:px-3 sm:py-1 rounded-full whitespace-nowrap" id="task-count">0 tasks</div>
         </div>
         <div class="flex items-center justify-end gap-2 sm:gap-3">
-          <div id="user-info" class="hidden flex items-center gap-2">
+          <div id="user-info" class="hidden items-center gap-2">
             <img id="user-pic" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full" src="" alt="">
             <span id="user-name" class="font-medium text-xs sm:text-sm hidden sm:inline max-w-[100px] truncate"></span>
             <button id="sign-out" class="min-tap-target bg-white text-indigo-600 px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium hover:bg-opacity-90 transition">Sign out</button>
@@ -93,7 +93,7 @@
     </div>
 
     <!-- Filter Pills -->
-    <div class="filter-scroll flex gap-1.5 sm:gap-2 py-2 -mx-3 sm:-mx-4 px-3 sm:px-4" id="filter-container">
+    <div class="filter-scroll flex gap-1.5 sm:gap-2 py-2 -mx-3 sm:-mx-4 px-3 sm:px-4 flex-nowrap" id="filter-container">
       <button class="filter-pill min-tap-target px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap border-2 transition flex items-center gap-1" data-filter="all">
         All <span class="bg-indigo-100 text-indigo-700 rounded-full px-1.5 sm:px-2 py-0.5 text-xs" id="count-all">0</span>
       </button>
@@ -258,8 +258,17 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
     
+    console.log('Firebase initialized successfully');
+    
+    // Set persistence to LOCAL (works better on mobile)
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
+      console.warn('Could not set auth persistence:', err);
+    });
+    
     // Enable offline persistence
-    db.enablePersistence().catch(err => {
+    db.enablePersistence().then(() => {
+      console.log('Offline persistence enabled');
+    }).catch(err => {
       if (err.code === 'failed-precondition') {
         console.warn('Persistence failed: multiple tabs open');
       } else if (err.code === 'unimplemented') {
@@ -270,10 +279,12 @@
     // Handle redirect result for mobile sign-in
     auth.getRedirectResult().then(result => {
       if (result.user) {
-        console.log('Redirect sign-in successful');
+        console.log('Redirect sign-in successful:', result.user.email);
       }
     }).catch(error => {
-      console.error('Redirect sign-in error:', error);
+      if (error.code !== 'auth/no-redirect-result') {
+        console.error('Redirect sign-in error:', error);
+      }
     });
 
     // Detect mobile device
@@ -301,10 +312,22 @@
     const completeAllBtn = document.getElementById('complete-all');
     const clearCompletedBtn = document.getElementById('clear-completed');
     const emptyState = document.getElementById('empty-state');
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const offlineBanner = document.getElementById('offline-banner');
-    const tasksLoading = document.getElementById('tasks-loading');
     const toastContainer = document.getElementById('toast-container');
+
+    // Hide loading overlay immediately and guarantee it's gone
+    document.addEventListener('DOMContentLoaded', () => {
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'none';
+    });
+
+    // Fallback: hide after 2 seconds regardless
+    setTimeout(() => {
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) {
+        overlay.classList.add('hidden');
+        overlay.style.display = 'none';
+      }
+    }, 2000);
 
     let allTasks = [];
     let tasksRef;
@@ -319,6 +342,9 @@
     }
 
     function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      
       const toast = document.createElement('div');
       const colors = {
         success: 'bg-green-500',
@@ -327,19 +353,23 @@
         info: 'bg-blue-500'
       };
       
-      toast.className = `${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-fade-in`;
+      const duration = type === 'error' ? 5000 : 3000;
+      toast.className = `${colors[type]} text-white px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium animate-fade-in w-full sm:w-auto`;
       toast.textContent = message;
       
-      toastContainer.appendChild(toast);
+      container.appendChild(toast);
       
       setTimeout(() => {
         toast.remove();
-      }, 3000);
+      }, duration);
     }
 
     function updateOnlineStatus() {
       isOnline = navigator.onLine;
-      offlineBanner.classList.toggle('hidden', isOnline);
+      const banner = document.getElementById('offline-banner');
+      if (banner) {
+        banner.classList.toggle('hidden', isOnline);
+      }
     }
 
     function formatDate(date) {
@@ -347,8 +377,6 @@
       const d = new Date(date.seconds * 1000);
       return d.toLocaleDateString();
     }
-    let isOnline = navigator.onLine;
-    let isSaving = false;
 
     // Category toggle
     categorySelect.addEventListener('change', () => {
@@ -368,7 +396,13 @@
     // Auth State
     auth.onAuthStateChanged(user => {
       console.log('Auth state changed. User:', user ? user.email : 'none');
-      loadingOverlay.classList.add('hidden');
+      
+      // Hide loading overlay safely
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) overlay.style.display = 'none';
+      
+      const tasksLoadingEl = document.getElementById('tasks-loading');
+      if (tasksLoadingEl) tasksLoadingEl.classList.add('hidden');
       
       if (user) {
         signInBtn.classList.add('hidden');
@@ -377,7 +411,9 @@
         userName.textContent = user.displayName || 'User';
         tasksRef = db.collection('users').doc(user.uid).collection('tasks');
         
-        tasksLoading.classList.remove('hidden');
+        const tasksLoadingDiv = document.getElementById('tasks-loading');
+        if (tasksLoadingDiv) tasksLoadingDiv.classList.remove('hidden');
+        
         tasksRef.onSnapshot(snapshot => {
           console.log('Tasks snapshot received, doc count:', snapshot.size);
           allTasks = [];
@@ -385,11 +421,14 @@
             const data = doc.data();
             allTasks.push({ id: doc.id, ...data });
           });
-          tasksLoading.classList.add('hidden');
+          
+          const el = document.getElementById('tasks-loading');
+          if (el) el.classList.add('hidden');
           renderTasks();
         }, error => {
           console.error('Firestore error:', error);
-          tasksLoading.classList.add('hidden');
+          const el = document.getElementById('tasks-loading');
+          if (el) el.classList.add('hidden');
           showToast('Failed to load tasks. Please check your connection.', 'error');
         });
       } else {
@@ -399,7 +438,8 @@
         allTasks = [];
         progressBar.style.width = '0';
         taskCount.textContent = '0 tasks';
-        tasksLoading.classList.add('hidden');
+        const el = document.getElementById('tasks-loading');
+        if (el) el.classList.add('hidden');
       }
     });
 
@@ -449,8 +489,9 @@
       }
       
       const textInput = taskForm['text'].value.trim();
-      if (!textInput) {
+      if (!textInput || textInput.length === 0) {
         showToast('Please enter a task title.', 'warning');
+        taskForm['text'].focus();
         return;
       }
       
@@ -484,7 +525,12 @@
         await tasksRef.add(data);
         taskForm.reset();
         customCategoryInput.classList.add('hidden');
+        customCategoryInput.value = '';
         categorySelect.value = 'Work';
+        document.getElementById('notes').value = '';
+        document.getElementById('due').value = '';
+        document.getElementById('priority').value = 'medium';
+        document.getElementById('text').focus();
         showToast('Task added successfully!', 'success');
       } catch (error) {
         console.error('Error adding task:', error);
@@ -633,15 +679,15 @@
     }
 
     function updateMotivation() {
-      const total = allTasks.filter(t => !t.completed).length;
       const completed = allTasks.filter(t => t.completed).length;
+      const total = allTasks.length;
       
       if (total === 0) {
         motivationContainer.classList.add('hidden');
         return;
       }
 
-      const pct = Math.round((completed / (completed + total)) * 100);
+      const pct = Math.round((completed / total) * 100);
       let message = '';
 
       if (pct === 0) {
@@ -691,7 +737,10 @@
 
       progressBar.style.width = pct + '%';
 
-      bulkActionsDiv.classList.toggle('hidden', filtered.length === 0);
+      const hasFilteredTasks = filtered.length > 0;
+      const hasCompletedInFiltered = filtered.some(t => t.completed);
+      const showBulkActions = hasFilteredTasks && (hasCompletedInFiltered || filtered.some(t => !t.completed));
+      bulkActionsDiv.classList.toggle('hidden', !showBulkActions);
 
       if (sorted.length === 0) {
         emptyState.classList.remove('hidden');
