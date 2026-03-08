@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Taskly - A beautiful, mobile-friendly to-do list app with Firebase sync across all your devices">
+  <meta property="og:title" content="Taskly - Beautiful To-Do List App">
+  <meta property="og:description" content="Stay organized with Taskly - sync your tasks across all devices with offline support">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Taskly">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
   <title>Taskly</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -15,9 +22,31 @@
     .filter-scroll { -ms-overflow-style: none; }
     .min-tap-target { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
     * { box-sizing: border-box; }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out;
+    }
   </style>
 </head>
 <body class="bg-gray-50 antialiased" style="font-family: Inter, sans-serif;">
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+      <p class="text-gray-600 font-medium">Loading Taskly...</p>
+    </div>
+  </div>
+
+  <!-- Offline Banner -->
+  <div id="offline-banner" class="fixed top-0 left-0 right-0 bg-red-600 text-white text-center py-2 text-sm font-medium z-40 hidden">
+    🔴 You're offline. Changes will sync when back online.
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2"></div>
   <!-- Header -->
   <header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white sticky top-0 z-50 shadow-md">
     <div class="max-w-3xl mx-auto px-4 py-3 sm:py-4">
@@ -47,6 +76,11 @@
   </div>
 
   <main class="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
+    <!-- Tasks Loading -->
+    <div id="tasks-loading" class="text-center py-8 hidden">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
+      <p class="text-gray-600 text-sm">Loading tasks...</p>
+    </div>
     <!-- Search Bar -->
     <div class="sticky top-12 z-40 bg-gray-50 pb-2 sm:pb-3 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-2 sm:pt-3">
       <input 
@@ -189,8 +223,9 @@
 
     <!-- Empty State -->
     <div id="empty-state" class="text-center py-8 sm:py-12 hidden">
-      <p class="text-3xl sm:text-4xl mb-2">✨</p>
-      <p class="text-gray-600 text-base sm:text-lg">No tasks yet. Add one to get started!</p>
+      <p class="text-3xl sm:text-4xl mb-2">📝</p>
+      <p class="text-gray-600 text-base sm:text-lg font-medium">Ready to get organized?</p>
+      <p class="text-gray-500 text-sm mt-1">Add your first task above to get started!</p>
     </div>
   </main>
 
@@ -201,6 +236,16 @@
 
   <script>
     // Firebase Config
+    // SECURITY NOTE: Before going public, set up Firestore Security Rules to restrict access to authenticated users only
+    // Example rules:
+    // rules_version = '2';
+    // service cloud.firestore {
+    //   match /databases/{database}/documents {
+    //     match /users/{userId}/{document=**} {
+    //       allow read, write: if request.auth != null && request.auth.uid == userId;
+    //     }
+    //   }
+    // }
     const firebaseConfig = {
       apiKey: "AIzaSyALBhEKZDpih5cYgvOiOqFswDSh-VKPP3k",
       authDomain: "todo-app-b16da.firebaseapp.com",
@@ -256,11 +301,54 @@
     const completeAllBtn = document.getElementById('complete-all');
     const clearCompletedBtn = document.getElementById('clear-completed');
     const emptyState = document.getElementById('empty-state');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const offlineBanner = document.getElementById('offline-banner');
+    const tasksLoading = document.getElementById('tasks-loading');
+    const toastContainer = document.getElementById('toast-container');
 
     let allTasks = [];
     let tasksRef;
     let currentFilter = 'all';
     let currentSort = 'newest';
+    let isOnline = navigator.onLine;
+    let isSaving = false;
+
+    // Utility Functions
+    function sanitizeInput(text) {
+      return text.replace(/<[^>]*>/g, '').trim();
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+      };
+      
+      toast.className = `${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-fade-in`;
+      toast.textContent = message;
+      
+      toastContainer.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    function updateOnlineStatus() {
+      isOnline = navigator.onLine;
+      offlineBanner.classList.toggle('hidden', isOnline);
+    }
+
+    function formatDate(date) {
+      if (!date) return '';
+      const d = new Date(date.seconds * 1000);
+      return d.toLocaleDateString();
+    }
+    let isOnline = navigator.onLine;
+    let isSaving = false;
 
     // Category toggle
     categorySelect.addEventListener('change', () => {
@@ -272,22 +360,37 @@
       }
     });
 
+    // Online/Offline detection
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+
     // Auth State
     auth.onAuthStateChanged(user => {
       console.log('Auth state changed. User:', user ? user.email : 'none');
+      loadingOverlay.classList.add('hidden');
+      
       if (user) {
         signInBtn.classList.add('hidden');
         userInfo.classList.remove('hidden');
         userPic.src = user.photoURL || '';
         userName.textContent = user.displayName || 'User';
         tasksRef = db.collection('users').doc(user.uid).collection('tasks');
+        
+        tasksLoading.classList.remove('hidden');
         tasksRef.onSnapshot(snapshot => {
           console.log('Tasks snapshot received, doc count:', snapshot.size);
           allTasks = [];
-          snapshot.forEach(doc => allTasks.push({ id: doc.id, ...doc.data() }));
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            allTasks.push({ id: doc.id, ...data });
+          });
+          tasksLoading.classList.add('hidden');
           renderTasks();
         }, error => {
           console.error('Firestore error:', error);
+          tasksLoading.classList.add('hidden');
+          showToast('Failed to load tasks. Please check your connection.', 'error');
         });
       } else {
         signInBtn.classList.remove('hidden');
@@ -296,56 +399,101 @@
         allTasks = [];
         progressBar.style.width = '0';
         taskCount.textContent = '0 tasks';
+        tasksLoading.classList.add('hidden');
       }
     });
 
-    signInBtn.addEventListener('click', () => {
+    signInBtn.addEventListener('click', async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
-      if (isMobile()) {
-        auth.signInWithRedirect(provider);
-      } else {
-        auth.signInWithPopup(provider);
+      
+      try {
+        if (isMobile()) {
+          await auth.signInWithRedirect(provider);
+        } else {
+          await auth.signInWithPopup(provider);
+        }
+      } catch (error) {
+        console.error('Sign-in error:', error);
+        
+        if (error.code === 'auth/popup-blocked' && !isMobile()) {
+          // Fallback to redirect on desktop if popup blocked
+          try {
+            await auth.signInWithRedirect(provider);
+          } catch (redirectError) {
+            showToast('Sign-in failed. Please allow popups or try again.', 'error');
+          }
+        } else {
+          let message = 'Sign-in failed. Please try again.';
+          if (error.code === 'auth/network-request-failed') {
+            message = 'Network error. Please check your connection.';
+          } else if (error.code === 'auth/too-many-requests') {
+            message = 'Too many sign-in attempts. Please wait and try again.';
+          }
+          showToast(message, 'error');
+        }
       }
     });
     signOutBtn.addEventListener('click', () => auth.signOut());
 
     // Add Task
-    taskForm.addEventListener('submit', e => {
+    taskForm.addEventListener('submit', async e => {
       e.preventDefault();
+      
       if (!tasksRef) {
-        alert('Please sign in first to add tasks');
+        showToast('Please sign in first to add tasks.', 'warning');
         return;
       }
       
-      let category = categorySelect.value;
-      if (category === '__custom__') {
-        category = customCategoryInput.value.trim();
-        if (!category) {
-          alert('Please enter a custom category name');
-          return;
-        }
+      if (isSaving) {
+        return; // Prevent duplicate submissions
       }
+      
+      const textInput = taskForm['text'].value.trim();
+      if (!textInput) {
+        showToast('Please enter a task title.', 'warning');
+        return;
+      }
+      
+      isSaving = true;
+      const submitBtn = taskForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<span class="text-white">⏳</span> Adding...';
+      submitBtn.disabled = true;
+      
+      try {
+        let category = categorySelect.value;
+        if (category === '__custom__') {
+          category = sanitizeInput(customCategoryInput.value);
+          if (!category) {
+            showToast('Please enter a custom category name.', 'warning');
+            return;
+          }
+        }
 
-      const data = {
-        text: taskForm['text'].value.trim(),
-        notes: document.getElementById('notes').value.trim(),
-        category: category,
-        due: taskForm['due'].value || null,
-        priority: taskForm['priority'].value,
-        completed: false,
-        starred: false,
-        created: firebase.firestore.FieldValue.serverTimestamp()
-      };
+        const data = {
+          text: sanitizeInput(textInput),
+          notes: sanitizeInput(document.getElementById('notes').value),
+          category: category,
+          due: taskForm['due'].value || null,
+          priority: taskForm['priority'].value,
+          completed: false,
+          starred: false,
+          created: firebase.firestore.FieldValue.serverTimestamp()
+        };
 
-      tasksRef.add(data).then(docRef => {
-        console.log('Task added with ID:', docRef.id);
+        await tasksRef.add(data);
         taskForm.reset();
         customCategoryInput.classList.add('hidden');
         categorySelect.value = 'Work';
-      }).catch(error => {
+        showToast('Task added successfully!', 'success');
+      } catch (error) {
         console.error('Error adding task:', error);
-        alert('Failed to add task: ' + error.message);
-      });
+        showToast('Failed to add task. Please try again.', 'error');
+      } finally {
+        isSaving = false;
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
     });
 
     // Filter Buttons
@@ -376,19 +524,49 @@
     });
 
     // Bulk Actions
-    completeAllBtn.addEventListener('click', () => {
+    completeAllBtn.addEventListener('click', async () => {
       const filtered = getFilteredTasks();
-      filtered.forEach(t => {
-        tasksRef.doc(t.id).update({ completed: true });
-      });
+      if (filtered.length === 0) {
+        showToast('No tasks to complete.', 'info');
+        return;
+      }
+      
+      try {
+        const batch = db.batch();
+        filtered.forEach(t => {
+          const ref = tasksRef.doc(t.id);
+          batch.update(ref, { completed: true });
+        });
+        await batch.commit();
+        showToast(`Completed ${filtered.length} task${filtered.length === 1 ? '' : 's'}!`, 'success');
+      } catch (error) {
+        console.error('Error completing tasks:', error);
+        showToast('Failed to complete tasks. Please try again.', 'error');
+      }
     });
 
-    clearCompletedBtn.addEventListener('click', () => {
-      if (confirm('Delete all completed tasks? This cannot be undone.')) {
-        const filtered = getFilteredTasks().filter(t => t.completed);
+    clearCompletedBtn.addEventListener('click', async () => {
+      const filtered = getFilteredTasks().filter(t => t.completed);
+      if (filtered.length === 0) {
+        showToast('No completed tasks to remove.', 'info');
+        return;
+      }
+      
+      if (!confirm(`Delete ${filtered.length} completed task${filtered.length === 1 ? '' : 's'}? This cannot be undone.`)) {
+        return;
+      }
+      
+      try {
+        const batch = db.batch();
         filtered.forEach(t => {
-          tasksRef.doc(t.id).delete();
+          const ref = tasksRef.doc(t.id);
+          batch.delete(ref);
         });
+        await batch.commit();
+        showToast(`Removed ${filtered.length} completed task${filtered.length === 1 ? '' : 's'}.`, 'success');
+      } catch (error) {
+        console.error('Error removing tasks:', error);
+        showToast('Failed to remove tasks. Please try again.', 'error');
       }
     });
 
@@ -553,6 +731,7 @@
           <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
             <span class="text-gray-800 text-xs font-semibold px-2 sm:px-3 py-1 bg-gray-100 rounded-full">${t.category}</span>
             <span class="text-gray-600 text-xs">📅 ${t.due ? t.due : 'No date'}</span>
+            <span class="text-gray-500 text-xs">📝 ${formatDate(t.created)}</span>
           </div>
 
           <div class="flex gap-2">
@@ -567,18 +746,38 @@
 
         taskList.appendChild(card);
 
-        card.querySelector('.complete-btn').addEventListener('click', () => {
-          tasksRef.doc(t.id).update({ completed: !t.completed });
-        });
-
-        card.querySelector('.delete-btn').addEventListener('click', () => {
-          if (confirm('Delete this task? This cannot be undone.')) {
-            tasksRef.doc(t.id).delete();
+        card.querySelector('.complete-btn').addEventListener('click', async () => {
+          try {
+            await tasksRef.doc(t.id).update({ completed: !t.completed });
+            showToast(t.completed ? 'Task marked incomplete.' : 'Task completed!', 'success');
+          } catch (error) {
+            console.error('Error updating task:', error);
+            showToast('Failed to update task. Please try again.', 'error');
           }
         });
 
-        card.querySelector('.star-btn').addEventListener('click', () => {
-          tasksRef.doc(t.id).update({ starred: !t.starred });
+        card.querySelector('.delete-btn').addEventListener('click', async () => {
+          if (!confirm('Delete this task? This cannot be undone.')) {
+            return;
+          }
+          
+          try {
+            await tasksRef.doc(t.id).delete();
+            showToast('Task deleted.', 'success');
+          } catch (error) {
+            console.error('Error deleting task:', error);
+            showToast('Failed to delete task. Please try again.', 'error');
+          }
+        });
+
+        card.querySelector('.star-btn').addEventListener('click', async () => {
+          try {
+            await tasksRef.doc(t.id).update({ starred: !t.starred });
+            showToast(t.starred ? 'Task unstarred.' : 'Task starred!', 'success');
+          } catch (error) {
+            console.error('Error updating star:', error);
+            showToast('Failed to update task. Please try again.', 'error');
+          }
         });
       });
     }
