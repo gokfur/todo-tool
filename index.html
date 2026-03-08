@@ -56,7 +56,7 @@
           <div class="text-xs sm:text-sm font-semibold bg-white bg-opacity-20 px-2 py-1 sm:px-3 sm:py-1 rounded-full whitespace-nowrap" id="task-count">0 tasks</div>
         </div>
         <div class="flex items-center justify-end gap-2 sm:gap-3">
-          <div id="user-info" class="hidden items-center gap-2">
+          <div id="user-info" class="items-center gap-2" style="display:none">
             <img id="user-pic" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full" src="" alt="">
             <span id="user-name" class="font-medium text-xs sm:text-sm hidden sm:inline max-w-[100px] truncate"></span>
             <button id="sign-out" class="min-tap-target bg-white text-indigo-600 px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium hover:bg-opacity-90 transition">Sign out</button>
@@ -406,7 +406,7 @@
       
       if (user) {
         signInBtn.classList.add('hidden');
-        userInfo.classList.remove('hidden');
+        userInfo.style.display = 'flex';
         userPic.src = user.photoURL || '';
         userName.textContent = user.displayName || 'User';
         tasksRef = db.collection('users').doc(user.uid).collection('tasks');
@@ -433,7 +433,7 @@
         });
       } else {
         signInBtn.classList.remove('hidden');
-        userInfo.classList.add('hidden');
+        userInfo.style.display = 'none';
         taskList.innerHTML = '';
         allTasks = [];
         progressBar.style.width = '0';
